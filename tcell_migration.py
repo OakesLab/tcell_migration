@@ -114,3 +114,84 @@ def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None):
     fig.show
     
     return
+
+# need following variables as part of the function: filename, imstack
+def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten = None, im_max_inten = None, color_hue = None):
+    
+    # make a colormap of the right length
+    if color_hue:
+        cmap = plt.cm.turbo
+        max_colormap = np.max(cell_trackdata_df[color_hue])
+        norm = colors.Normalize(vmin=0, vmax=max_colormap)
+    
+    # make a directory to store all the tracked images
+    if filename.rfind('/') == -1:
+        movie_folder = 'movie'
+    else:
+        movie_folder = filename[:filename.rfind('/')] + '/movie'
+    # if the folder doesn't exist, make it 
+    if os.path.isdir(movie_folder) == False:
+        os.mkdir(movie_folder)
+    
+    # get the number of frames in the movie
+    N_images = imstack.shape[0]
+    # make the figure
+    fig, ax = plt.subplots(figsize=(10, 10))
+    fig.show()
+    for frame in np.arange(0,N_images):
+        # clear the axes 
+        ax.clear()
+        # show the image
+        ax.imshow(imstack[frame], vmin=im_min_inten, vmax=im_max_inten, cmap='Greys')
+        # make a reduced dataframe that has all tracks that start before that frame
+        reduced_df = cell_trackdata_df[cell_trackdata_df['first_frame'] < frame]
+        # loop through tracks
+        for index, row in reduced_df.iterrows():
+            # keep only those points that are in the previous frames
+            x = row['x'][row['frames'] < frame]
+            y = row['y'][row['frames'] < frame]
+            if color_hue:
+                ax.plot(x, y, color = cmap(norm(row[color_hue])))
+            else:
+                ax.plot(x, y, color = 'r')
+        # turn the axes off
+        ax.axis('off')
+        # save the figure
+        fig.savefig(movie_folder + '/cell_tracks_frame_%03d.png' % frame, dpi = 150, bbox_inches='tight')
+
+    # get a list of the files in the folder
+    file_list = sorted(glob.glob(movie_folder + '/cell_tracks_frame*.png'))
+    # read in the first frame
+    first_frame = io.imread(movie_folder + '/cell_tracks_frame_000.png')
+    # keep just the first channel
+    first_frame = first_frame[:,:,0]
+    # make empty lists to find the rows,columns that have data
+    rows, cols = [],[]
+    for i in np.arange(0,first_frame.shape[0]):
+        rows.append(len(np.unique(first_frame[i,:])))
+    for j in np.arange(0,first_frame.shape[1]):
+        cols.append(len(np.unique(first_frame[:,j])))
+
+    # figure out which rows and columns have data
+    rows_withdata = np.where(np.array(rows) > 1)
+    cols_withdata = np.where(np.array(cols) > 1)
+
+    row_begin = rows_withdata[0][0]
+    row_end = rows_withdata[0][-1] + 1
+    col_begin = cols_withdata[0][0]
+    col_end = cols_withdata[0][-1] + 1
+
+    # make an image stack without the padding
+    plot_stack = np.zeros((N_images, row_end - row_begin, col_end - col_begin,3), dtype = 'uint8')
+    # crop each image and add it to the stack
+    for i,im_name in enumerate(file_list):
+        im = io.imread(im_name)
+        plot_stack[i] = im[row_begin:row_end,col_begin:col_end,0:3]
+
+    # save the movie as a .tif stack
+    io.imsave(filename[:-4] + '_movie.tif', plot_stack.astype('uint8'))  
+    #remove the individual images and the folder
+    shutil.rmtree(movie_folder)
+    
+    return
+
