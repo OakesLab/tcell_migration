@@ -89,3 +89,28 @@ def calculate_track_parameters(cell_tracks_filtered, um_per_pixel = 1, frame_dur
     cell_trackdata_df['duration_frames'] = path_duration_frames
 
     return cell_trackdata_df
+
+def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None):
+    # get the max projection of the image stack
+    stack_sum = np.max(imstack, axis=0)
+    # make a colormap of the right length
+    if color_hue:
+        cmap = plt.cm.turbo
+        max_colormap = np.max(cell_trackdata_df[color_hue])
+        norm = colors.Normalize(vmin=0, vmax=max_colormap)
+    
+    # make the figure
+    fig, ax = plt.subplots()
+    # plot the summed image so overlays are easy to see
+    ax.imshow(stack_sum, cmap = 'Greys_r', vmin = np.min(stack_sum), vmax = .2*np.max(stack_sum))
+    for index, row in cell_trackdata_df.iterrows():
+        if color_hue:
+            ax.plot(row['x'], row['y'], color = cmap(norm(row[color_hue])))
+        else:
+            ax.plot(row['x'], row['y'], color = 'r')
+    ax.axis('off')
+    if color_hue:
+        fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax = ax, label=color_hue)
+    fig.show
+    
+    return
