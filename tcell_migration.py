@@ -23,7 +23,7 @@ def  check_peak_locations(imstack, frame_num = 0, feature_size = 11, minmass = 2
 
     # plot the images with the peaks overlaid
     plt.figure()
-    plt.imshow(imstack[0], vmin = im_min_inten, vmax = im_max_inten)
+    plt.imshow(imstack[frame_num], vmin = im_min_inten, vmax = im_max_inten)
     plt.plot(cells['x'], cells['y'], 'rx')
     plt.title('trackpy intensity features')
     plt.axis('off')
