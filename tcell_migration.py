@@ -33,7 +33,7 @@ def  check_peak_locations(imstack, frame_num = 0, feature_size = 11, minmass = 2
     
     return
 
-def calculate_track_parameters(cell_tracks_filtered):
+def calculate_track_parameters(cell_tracks_filtered, um_per_pixel = 1, frame_duration = 1):
 
     # set particle as the index
     cell_tracks_filtered_indexed = cell_tracks_filtered.set_index('particle')
