@@ -96,7 +96,7 @@ def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pix
 
     return cell_trackdata_df
 
-def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None, filename='.tif', save_plot=True):
+def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue = None, save_plot = True):
     # get the max projection of the image stack
     stack_sum = np.max(imstack, axis=0)
     # make a colormap of the right length
@@ -121,9 +121,9 @@ def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None, filename='.t
 
     if save_plot:
         if color_hue:
-            fig.savefig(filename[:-4] + '_' + color_hue + '_trackoverlay.png', dpi=300)
+            fig.savefig(filename[:-4] + '_' + color_hue + '_trackoverlay.png', dpi=300, bbox_inches='tight')
         else:
-            fig.savefig(filename[:-4] + '_trackoverlay.png', dpi = 300)
+            fig.savefig(filename[:-4] + '_trackoverlay.png', dpi = 300, bbox_inches='tight')
     
     return
 
@@ -207,3 +207,43 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
     
     return
 
+def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hue = None, xlimits = (None,None), ylimits = (None,None), save_plot=True):
+    
+    # set the limits of the plot if a single number is passed
+    if (type(ylimits) is int) | (type(ylimits) is float):
+        ylimits = (-1*ylimits, ylimits)
+    if (type(xlimits) is int) | (type(xlimits) is float):
+        xlimits = (-1*xlimits, xlimits)
+
+    # if a color hue is given, sort the data and make the colormap for that range
+    if color_hue:
+        cell_trackdata_df = cell_trackdata_df.sort_values(by = color_hue, ascending=False)
+        cmap = plt.cm.rainbow
+        max_colormap = np.max(cell_trackdata_df[color_hue])
+        norm = colors.Normalize(vmin=0, vmax=max_colormap)
+
+    # make the plot
+    fig, ax = plt.subplots()
+    # loop through the data and assign colors
+    for index, row in cell_trackdata_df.iterrows():
+        if color_hue:
+            ax.plot((row['x'] - row['x'][0]) * um_per_pixel, (row['y'] - row['y'][0]) * um_per_pixel, color = cmap(norm(row[color_hue])))
+        else:
+            ax.plot((row['x'] - row['x'][0]) * um_per_pixel, (row['y'] - row['y'][0]) * um_per_pixel)
+
+    # make the plot square and set the limits
+    ax.axis('square')
+    ax.set_ylim(ylimits)
+    ax.set_xlim(xlimits)
+    # add a colorbar if there's a hue
+    if color_hue:
+        fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax = ax, label=color_hue)
+    # show the image
+    fig.show
+
+    # save the image
+    if save_plot:
+        fig.savefig(filename[:-4] + '_roseplot.eps', format = 'eps', bbox_inches='tight')
+        fig.savefig(filename[:-4] + '_roseplot.png', format = 'png', dpi=300, bbox_inches='tight')
+    
+    return
