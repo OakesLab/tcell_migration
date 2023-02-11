@@ -179,33 +179,22 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
     first_frame = io.imread(movie_folder + '/cell_tracks_frame_000.png')
     # keep just the first channel
     first_frame = first_frame[:,:,0]
-    # make empty lists to find the rows,columns that have data
-    rows, cols = [],[]
-    for i in np.arange(0,first_frame.shape[0]):
-        rows.append(len(np.unique(first_frame[i,:])))
-    for j in np.arange(0,first_frame.shape[1]):
-        cols.append(len(np.unique(first_frame[:,j])))
+    # get the shape of the images
+    N_rows, N_cols = first_frame.shape
 
-    # figure out which rows and columns have data
-    rows_withdata = np.where(np.array(rows) > 1)
-    cols_withdata = np.where(np.array(cols) > 1)
-
-    row_begin = rows_withdata[0][0]
-    row_end = rows_withdata[0][-1] + 1
-    col_begin = cols_withdata[0][0]
-    col_end = cols_withdata[0][-1] + 1
-
-    # make an image stack without the padding
-    plot_stack = np.zeros((N_images, row_end - row_begin, col_end - col_begin,3), dtype = 'uint8')
-    # crop each image and add it to the stack
+    # make a matrix to hold everything
+    plot_stack = np.zeros((N_images, N_rows, N_cols,3), dtype = 'uint8')
+    # Add each image to the stack
     for i,im_name in enumerate(file_list):
         im = io.imread(im_name)
-        plot_stack[i] = im[row_begin:row_end,col_begin:col_end,0:3]
+        plot_stack[i] = im[:N_rows,:N_cols,0:3]
 
     # save the movie as a .tif stack
     io.imsave(filename[:-4] + '_movie.tif', plot_stack.astype('uint8'))  
     #remove the individual images and the folder
     shutil.rmtree(movie_folder)
+
+    save_timelapse_as_movie(plot_stack, filename)
     
     return
 
