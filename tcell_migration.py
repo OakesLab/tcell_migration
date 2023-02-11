@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt  # for plotting everything
 from matplotlib import cm, colors
 import seaborn as sns
 import matplotlib.patches as mpatches
+import subprocess                                  # for executing commands from the terminal
+
 # from skimage.feature import peak_local_max
 # import warnings
 # warnings.filterwarnings('ignore',category=pd.io.pytables.PerformanceWarning)
@@ -169,7 +171,7 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
         # turn the axes off
         ax.axis('off')
         # save the figure
-        fig.savefig(movie_folder + '/cell_tracks_frame_%03d.png' % frame, dpi = 150, bbox_inches='tight')
+        fig.savefig(movie_folder + '/cell_tracks_frame_%03d.png' % frame, dpi = 150, bbox_inches='tight', pad_inches = 0)
 
     # get a list of the files in the folder
     file_list = sorted(glob.glob(movie_folder + '/cell_tracks_frame*.png'))
@@ -245,5 +247,37 @@ def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hu
     if save_plot:
         fig.savefig(filename[:-4] + '_roseplot.eps', format = 'eps', bbox_inches='tight')
         fig.savefig(filename[:-4] + '_roseplot.png', format = 'png', dpi=300, bbox_inches='tight')
+    
+    return
+
+def save_timelapse_as_movie(imstack, filename='.tif'):
+    '''Save a timelapse as a movie using the **kwargs to make a ffmpeg command to run in the terminal'''
+    
+    # make a temp folder to hold the image series
+    if os.path.isdir('temp_folder') == False:
+        os.mkdir('temp_folder')
+    
+    # check stack shape to make sure it's even or ffmpeg will throw an error
+    if imstack.shape[1] % 2:
+        imstack = imstack[:,:-1,:]
+    if imstack.shape[2] % 2:
+        imstack = imstack[:,:,:-1]
+
+    # determine the number of images
+    N_images = imstack.shape[0]
+    
+    # write image series
+    # if a timestamp is included
+    for plane in np.arange(0,N_images):
+        io.imsave('temp_folder/movie%04d.tif' % plane, imstack[plane])
+
+    # generate the ffmpeg command
+    movie_str = 'ffmpeg -y -f image2 -r 15 -i temp_folder/movie%04d.tif -vcodec libx264 -crf 25 -pix_fmt yuv420p ' + filename[:-4] + '_movie.mp4'
+    
+    # run ffmpeg
+    subprocess.call(movie_str, shell=True)
+    
+    # delete the temp folder and files
+    shutil.rmtree('temp_folder')
     
     return
