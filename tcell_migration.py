@@ -90,6 +90,10 @@ def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pix
 
     cell_trackdata_df.to_hdf(filename[:-4] + '_trackdata.h5', key='tracks', mode='w')
 
+    # make a reduced dataframe withoutx,y,frameslist
+    cell_trackdata_df_csv = cell_trackdata_df.drop(['x','y','frames'], axis=1)
+    cell_trackdata_df_csv.to_csv(filename[:-4] + '_trackdata.csv')
+
     return cell_trackdata_df
 
 def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None, filename='.tif', save_plot=True):
