@@ -33,7 +33,7 @@ def  check_peak_locations(imstack, frame_num = 0, feature_size = 11, minmass = 2
     
     return
 
-def calculate_track_parameters(cell_tracks_filtered, filename, um_per_pixel = 1, frame_duration = 1):
+def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pixel = 1, frame_duration = 1):
 
     # set particle as the index
     cell_tracks_filtered_indexed = cell_tracks_filtered.set_index('particle')
@@ -92,7 +92,7 @@ def calculate_track_parameters(cell_tracks_filtered, filename, um_per_pixel = 1,
 
     return cell_trackdata_df
 
-def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None):
+def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None, filename='.tif', save_plot=True):
     # get the max projection of the image stack
     stack_sum = np.max(imstack, axis=0)
     # make a colormap of the right length
@@ -114,6 +114,12 @@ def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None):
     if color_hue:
         fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax = ax, label=color_hue)
     fig.show
+
+    if save_plot:
+        if color_hue:
+            fig.savefig(filename[:-4] + '_' + color_hue + '_trackoverlay.png', dpi=300)
+        else:
+            fig.savefig(filename[:-4] + '_trackoverlay.png', dpi = 300)
     
     return
 
