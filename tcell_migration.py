@@ -134,7 +134,7 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
     
     # make a colormap of the right length
     if color_hue:
-        cmap = plt.cm.turbo
+        cmap = plt.cm.rainbow
         max_colormap = np.max(cell_trackdata_df[color_hue])
         norm = colors.Normalize(vmin=0, vmax=max_colormap)
     
@@ -239,7 +239,7 @@ def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hu
     
     return
 
-def save_timelapse_as_movie(imstack, filename='.tif'):
+def save_timelapse_as_movie(imstack, filename='.tif', warning_flag=False):
     '''Save a timelapse as a movie using the **kwargs to make a ffmpeg command to run in the terminal'''
     
     # make a temp folder to hold the image series
@@ -264,7 +264,10 @@ def save_timelapse_as_movie(imstack, filename='.tif'):
     movie_str = 'ffmpeg -y -f image2 -r 15 -i temp_folder/movie%04d.tif -vcodec libx264 -crf 25 -pix_fmt yuv420p ' + filename[:-4] + '_movie.mp4'
     
     # run ffmpeg
-    subprocess.call(movie_str, shell=True)
+    if warning_flag:
+        subprocess.call(movie_str, shell=True, stderr = subprocess.STDOUT, stdout = subprocess.DEVNULL)
+    else:
+        subprocess.call(movie_str, shell=True)
     
     # delete the temp folder and files
     shutil.rmtree('temp_folder')
