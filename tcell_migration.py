@@ -33,7 +33,7 @@ def  check_peak_locations(imstack, frame_num = 0, feature_size = 11, minmass = 2
     
     return
 
-def calculate_track_parameters(cell_tracks_filtered, um_per_pixel = 1, frame_duration = 1):
+def calculate_track_parameters(cell_tracks_filtered, filename, um_per_pixel = 1, frame_duration = 1):
 
     # set particle as the index
     cell_tracks_filtered_indexed = cell_tracks_filtered.set_index('particle')
@@ -87,6 +87,8 @@ def calculate_track_parameters(cell_tracks_filtered, um_per_pixel = 1, frame_dur
     cell_trackdata_df['effective_velocity'] = effective_velocity
     cell_trackdata_df['first_frame'] = first_frame_list
     cell_trackdata_df['duration_frames'] = path_duration_frames
+
+    cell_trackdata_df.to_hdf(filename[:-4] + '_trackdata.h5', key='tracks', mode='w')
 
     return cell_trackdata_df
 
