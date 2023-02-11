@@ -109,7 +109,7 @@ def plot_track_overlays(imstack, cell_trackdata_df, color_hue=None):
         if color_hue:
             ax.plot(row['x'], row['y'], color = cmap(norm(row[color_hue])))
         else:
-            ax.plot(row['x'], row['y'], color = 'r')
+            ax.plot(row['x'], row['y'])
     ax.axis('off')
     if color_hue:
         fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax = ax, label=color_hue)
