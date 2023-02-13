@@ -98,13 +98,14 @@ def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pix
 
     return cell_trackdata_df
 
-def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue = None, save_plot = True):
+def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue = None, max_colormap = None, save_plot = True):
     # get the max projection of the image stack
     stack_sum = np.max(imstack, axis=0)
     # make a colormap of the right length
     if color_hue:
-        cmap = plt.cm.turbo
-        max_colormap = np.max(cell_trackdata_df[color_hue])
+        cmap = plt.cm.rainbow
+        if max_colormap is None:
+            max_colormap = np.max(cell_trackdata_df[color_hue])
         norm = colors.Normalize(vmin=0, vmax=max_colormap)
     
     # make the figure
@@ -130,12 +131,13 @@ def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue =
     return
 
 # need following variables as part of the function: filename, imstack
-def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten = None, im_max_inten = None, color_hue = None):
+def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten = None, im_max_inten = None, color_hue = None, max_colormap = None):
     
     # make a colormap of the right length
     if color_hue:
         cmap = plt.cm.rainbow
-        max_colormap = np.max(cell_trackdata_df[color_hue])
+        if max_colormap is None:
+            max_colormap = np.max(cell_trackdata_df[color_hue])
         norm = colors.Normalize(vmin=0, vmax=max_colormap)
     
     # make a directory to store all the tracked images
@@ -198,7 +200,7 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
     
     return
 
-def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hue = None, xlimits = (None,None), ylimits = (None,None), save_plot=True):
+def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hue = None, max_colormap = None, xlimits = (None,None), ylimits = (None,None), save_plot=True):
     
     # set the limits of the plot if a single number is passed
     if (type(ylimits) is int) | (type(ylimits) is float):
@@ -210,7 +212,8 @@ def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hu
     if color_hue:
         cell_trackdata_df = cell_trackdata_df.sort_values(by = color_hue, ascending=False)
         cmap = plt.cm.rainbow
-        max_colormap = np.max(cell_trackdata_df[color_hue])
+        if max_colormap is None:
+            max_colormap = np.max(cell_trackdata_df[color_hue])
         norm = colors.Normalize(vmin=0, vmax=max_colormap)
 
     # make the plot
