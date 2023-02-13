@@ -239,7 +239,7 @@ def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hu
     
     return
 
-def save_timelapse_as_movie(imstack, filename='.tif', warning_flag=False):
+def save_timelapse_as_movie(imstack, filename='.tif', framerate = 15, warning_flag=False):
     '''Save a timelapse as a movie using the **kwargs to make a ffmpeg command to run in the terminal'''
     
     # make a temp folder to hold the image series
@@ -261,7 +261,7 @@ def save_timelapse_as_movie(imstack, filename='.tif', warning_flag=False):
         io.imsave('temp_folder/movie%04d.tif' % plane, imstack[plane])
 
     # generate the ffmpeg command
-    movie_str = 'ffmpeg -y -f image2 -r 15 -i temp_folder/movie%04d.tif -vcodec libx264 -crf 25 -pix_fmt yuv420p ' + filename[:-4] + '_movie.mp4'
+    movie_str = 'ffmpeg -y -f image2 -r ' + str(framerate) + ' -i temp_folder/movie%04d.tif -vcodec libx264 -crf 25 -pix_fmt yuv420p ' + filename[:-4] + '_movie.mp4'
     
     # run ffmpeg
     if warning_flag:
