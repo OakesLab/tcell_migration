@@ -194,7 +194,7 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
     #remove the individual images and the folder
     shutil.rmtree(movie_folder)
 
-    save_timelapse_as_movie(plot_stack, filename)
+    save_timelapse_as_movie(plot_stack, filename[:-4] + 'overlays.tif')
     
     return
 
@@ -258,18 +258,39 @@ def save_timelapse_as_movie(imstack, filename='.tif', framerate = 15, warning_fl
     # write image series
     # if a timestamp is included
     for plane in np.arange(0,N_images):
-        io.imsave('temp_folder/movie%04d.tif' % plane, imstack[plane])
+        io.imsave('temp_folder/movie%04d.tif' % plane, imstack[plane], check_contrast=False)
 
     # generate the ffmpeg command
     movie_str = 'ffmpeg -y -f image2 -r ' + str(framerate) + ' -i temp_folder/movie%04d.tif -vcodec libx264 -crf 25 -pix_fmt yuv420p ' + filename[:-4] + '_movie.mp4'
     
     # run ffmpeg
     if warning_flag:
-        subprocess.call(movie_str, shell=True, stderr = subprocess.STDOUT, stdout = subprocess.DEVNULL)
-    else:
         subprocess.call(movie_str, shell=True)
+    else:
+        subprocess.call(movie_str, shell=True, stderr = subprocess.STDOUT, stdout = subprocess.DEVNULL)
     
     # delete the temp folder and files
     shutil.rmtree('temp_folder')
+    
+    return
+
+def make_movie_of_raw_data(imstack, filename, min_inten = None, max_inten = None):
+    
+    # make a copy of the stack
+    imstack_8bit = imstack.copy()
+    # set the min and max intensities if they're note defined
+    if max_inten is None:
+        max_inten = np.max(imstack_8bit) * 0.2
+    if min_inten is None:
+        min_inten = np.min(imstack_8bit)
+    # set the max intensity
+    imstack_8bit[imstack_8bit > max_inten] = max_inten
+    # set the min intensity
+    imstack_8bit[imstack_8bit < min_inten] = min_inten
+    # normalize to an 8bit image
+    imstack_8bit = imstack_8bit - min_inten
+    imstack_8bit = imstack_8bit / np.max(imstack_8bit)  * 255
+    # save the movie
+    save_timelapse_as_movie(imstack_8bit.astype('uint8'), filename)
     
     return
