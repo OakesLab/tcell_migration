@@ -9,6 +9,8 @@ from matplotlib import cm, colors
 import seaborn as sns
 import matplotlib.patches as mpatches
 import subprocess                                  # for executing commands from the terminal
+from skimage.registration import phase_cross_correlation       # image registration
+from scipy.fftpack import fft2, ifft2, ifftshift               # FFT for image registration
 
 # from skimage.feature import peak_local_max
 # import warnings
@@ -297,3 +299,111 @@ def make_movie_of_raw_data(imstack, filename, min_inten = None, max_inten = None
     save_timelapse_as_movie(imstack_8bit.astype('uint8'), filename)
     
     return
+
+def register_stack_firstframe(imagename, save_result = True):
+    # check if it's a string or a matrix and read in the image
+    if isinstance(imagename, str):
+        image_stack = io.imread(imagename)
+        imagename = imagename[:-4]
+    else:
+        image_stack = imagename
+        imagename = 'imagestack'
+        
+    # Get the number of images in the stack
+    N_images, N_rows, N_cols = image_stack.shape
+
+    # Create an empty array to hold the registered images
+    image_stack_registered = np.zeros_like(image_stack)
+
+    # Create an empty array to hold the shift coordinates to reference for use in other channels
+    shift_coordinates = np.zeros((N_images, 4))
+    shift_coordinates2 = np.zeros((N_images, 4))
+    # Create a matrix with the row and column numbers for the registered image calculation
+    Nr = ifftshift(np.arange(-1 * np.fix(N_rows/2), np.ceil(N_rows/2)))
+    Nc = ifftshift(np.arange(-1 * np.fix(N_cols/2), np.ceil(N_cols/2)))
+    Nc, Nr = np.meshgrid(Nc, Nr)
+
+    # Define the subpixel resolution
+    subpixel_resolution = 10
+    
+    # Define reference frame
+    reference_image = image_stack[0]
+    
+    # For loop to register each plane in the stack
+    for plane in np.arange(1,N_images):
+        # Read in the image you want to register
+        next_image = image_stack[plane,:,:]
+        
+        # Perform the subpixel registration
+        shift, error, diffphase = phase_cross_correlation(reference_image, next_image, upsample_factor=subpixel_resolution)
+        # Store the shift coordinates
+        shift_coordinates[plane] = np.array([shift[0] , shift[1] , error, diffphase])
+
+        # Calculate the shifted image
+        shifted_image_fft = fft2(next_image) * np.exp(
+                1j * 2 * np.pi * (-shift_coordinates[plane,0] * Nr / N_rows - shift_coordinates[plane,1] * Nc / N_cols))
+        shifted_image_fft = shifted_image_fft * np.exp(1j * diffphase)
+        shifted_image = np.abs(ifft2(shifted_image_fft))
+        image_stack_registered[plane,:,:] = shifted_image.copy()
+
+    # set the first plane to the same as the stack
+    image_stack_registered[0] = image_stack[0]
+    
+    if save_result:
+        io.imsave(imagename + '_registered.tif', image_stack_registered.astype('uint16'), check_contrast = False)
+    
+    return image_stack_registered, shift_coordinates
+
+def shift_image_stack(image_stack_name, shift_coordinates):
+	"""
+	Register an image stack based on a previously registered stack of images
+	
+	Parameters
+	----------
+	image_stack_name  :  str         - name of the image stack to be registered
+	shift_coordinates :  4xN ndarray - contains N rows of [ row shift, col shift, error, diffphase] 
+									   from skimage.feature.register_translation output. N must be the same number
+									   of images in the stack
+	
+	Output
+	------
+	Saves the registered stack of images with the same name with '_registered' appended
+	"""
+	
+	# read in image stack
+	image_stack = io.imread(image_stack_name)
+	
+	# correct the stack shape if there's only one image
+	if len(image_stack.shape) == 2:
+		temp = np.zeros((1,image_stack.shape[0],image_stack.shape[1]))
+		temp[0] = image_stack.copy()
+		image_stack = temp.copy()
+
+	# Get the shape of your stack
+	N_planes, N_rows, N_cols = image_stack.shape
+	
+	# Create a matrix with the row and column numbers for the registered image calculation
+	Nr = ifftshift(np.arange(-1 * np.fix(N_rows/2), np.ceil(N_rows/2)))
+	Nc = ifftshift(np.arange(-1 * np.fix(N_cols/2), np.ceil(N_cols/2)))
+	Nc, Nr = np.meshgrid(Nc, Nr)
+	
+	# Create an empty array to hold the registered image
+	image_registered = np.zeros((N_planes, N_rows, N_cols))
+	
+	# register each plane based on the provided coordinates
+	for plane in np.arange(0,N_planes):
+		raw_image = image_stack[plane]
+		shifted_image_fft = fft2(raw_image) * np.exp(
+		1j * 2 * np.pi * (-shift_coordinates[plane,0] * Nr / N_rows - shift_coordinates[plane,1] * Nc / N_cols))
+		shifted_image_fft = shifted_image_fft * np.exp(1j * shift_coordinates[plane,3])
+		shifted_image = np.abs(ifft2(shifted_image_fft))
+		image_registered[plane] = shifted_image.copy()
+	
+	# new file name
+	image_registered_name = image_stack_name[:-4] + '_registered.tif'
+	
+	# Save the registered stack
+	io.imsave(image_registered_name, image_registered.astype('uint16'))
+    
+    return
+
