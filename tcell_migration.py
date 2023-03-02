@@ -355,55 +355,55 @@ def register_stack_firstframe(imagename, save_result = True):
     return image_stack_registered, shift_coordinates
 
 def shift_image_stack(image_stack_name, shift_coordinates):
-	"""
-	Register an image stack based on a previously registered stack of images
-	
-	Parameters
-	----------
-	image_stack_name  :  str         - name of the image stack to be registered
-	shift_coordinates :  4xN ndarray - contains N rows of [ row shift, col shift, error, diffphase] 
-									   from skimage.feature.register_translation output. N must be the same number
-									   of images in the stack
-	
-	Output
-	------
-	Saves the registered stack of images with the same name with '_registered' appended
-	"""
-	
-	# read in image stack
-	image_stack = io.imread(image_stack_name)
-	
-	# correct the stack shape if there's only one image
-	if len(image_stack.shape) == 2:
-		temp = np.zeros((1,image_stack.shape[0],image_stack.shape[1]))
-		temp[0] = image_stack.copy()
-		image_stack = temp.copy()
+    """
+    Register an image stack based on a previously registered stack of images
+    
+    Parameters
+    ----------
+    image_stack_name  :  str         - name of the image stack to be registered
+    shift_coordinates :  4xN ndarray - contains N rows of [ row shift, col shift, error, diffphase] 
+                                       from skimage.feature.register_translation output. N must be the same number
+                                       of images in the stack
+    
+    Output
+    ------
+    Saves the registered stack of images with the same name with '_registered' appended
+    """
+    
+    # read in image stack
+    image_stack = io.imread(image_stack_name)
+    
+    # correct the stack shape if there's only one image
+    if len(image_stack.shape) == 2:
+        temp = np.zeros((1,image_stack.shape[0],image_stack.shape[1]))
+        temp[0] = image_stack.copy()
+        image_stack = temp.copy()
 
-	# Get the shape of your stack
-	N_planes, N_rows, N_cols = image_stack.shape
-	
-	# Create a matrix with the row and column numbers for the registered image calculation
-	Nr = ifftshift(np.arange(-1 * np.fix(N_rows/2), np.ceil(N_rows/2)))
-	Nc = ifftshift(np.arange(-1 * np.fix(N_cols/2), np.ceil(N_cols/2)))
-	Nc, Nr = np.meshgrid(Nc, Nr)
-	
-	# Create an empty array to hold the registered image
-	image_registered = np.zeros((N_planes, N_rows, N_cols))
-	
-	# register each plane based on the provided coordinates
-	for plane in np.arange(0,N_planes):
-		raw_image = image_stack[plane]
-		shifted_image_fft = fft2(raw_image) * np.exp(
-		1j * 2 * np.pi * (-shift_coordinates[plane,0] * Nr / N_rows - shift_coordinates[plane,1] * Nc / N_cols))
-		shifted_image_fft = shifted_image_fft * np.exp(1j * shift_coordinates[plane,3])
-		shifted_image = np.abs(ifft2(shifted_image_fft))
-		image_registered[plane] = shifted_image.copy()
-	
-	# new file name
-	image_registered_name = image_stack_name[:-4] + '_registered.tif'
-	
-	# Save the registered stack
-	io.imsave(image_registered_name, image_registered.astype('uint16'))
+    # Get the shape of your stack
+    N_planes, N_rows, N_cols = image_stack.shape
+    
+    # Create a matrix with the row and column numbers for the registered image calculation
+    Nr = ifftshift(np.arange(-1 * np.fix(N_rows/2), np.ceil(N_rows/2)))
+    Nc = ifftshift(np.arange(-1 * np.fix(N_cols/2), np.ceil(N_cols/2)))
+    Nc, Nr = np.meshgrid(Nc, Nr)
+    
+    # Create an empty array to hold the registered image
+    image_registered = np.zeros((N_planes, N_rows, N_cols))
+    
+    # register each plane based on the provided coordinates
+    for plane in np.arange(0,N_planes):
+        raw_image = image_stack[plane]
+        shifted_image_fft = fft2(raw_image) * np.exp(
+        1j * 2 * np.pi * (-shift_coordinates[plane,0] * Nr / N_rows - shift_coordinates[plane,1] * Nc / N_cols))
+        shifted_image_fft = shifted_image_fft * np.exp(1j * shift_coordinates[plane,3])
+        shifted_image = np.abs(ifft2(shifted_image_fft))
+        image_registered[plane] = shifted_image.copy()
+    
+    # new file name
+    image_registered_name = image_stack_name[:-4] + '_registered.tif'
+    
+    # Save the registered stack
+    io.imsave(image_registered_name, image_registered.astype('uint16'))
     
     return
 
