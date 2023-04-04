@@ -407,7 +407,7 @@ def shift_image_stack(image_stack_name, shift_coordinates):
     image_registered_name = image_stack_name[:-4] + '_registered.tif'
     
     # Save the registered stack
-    io.imsave(image_registered_name, image_registered.astype('uint16'))
+    io.imsave(image_registered_name, image_registered.astype('uint16'), check_contrast=False)
     
     return
 
