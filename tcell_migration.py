@@ -51,6 +51,7 @@ def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pix
     path_duration, path_duration_frames = [],[]
     average_velocity, effective_velocity = [],[]
     frame_list, first_frame_list = [],[]
+    velocity = []
 
     # loop through each particle id
     for puncta in unique_particle:
@@ -72,11 +73,14 @@ def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pix
         displacement.append(np.sqrt((trajectory_x[-1][-1] - trajectory_x[-1][0])**2 + (trajectory_y[-1][-1] - trajectory_y[-1][0])**2) * um_per_pixel)
     #     displacement_s.append(np.sqrt((trajectory_xs[-1][-1] - trajectory_xs[-1][0])**2 + (trajectory_ys[-1][-1] - trajectory_ys[-1][0])**2) * um_per_pixel)
         effective_velocity.append(displacement[-1] / path_duration[-1])
+        v = np.sqrt(np.diff(individual_table['x'].values)**2 + np.diff(individual_table['y'].values)**2) * um_per_pixel / frame_duration
+        velocity.append(np.insert(v, 0, 0))
 
     # make the dataframe
     cell_trackdata_df = pd.DataFrame()
     cell_trackdata_df['x'] = trajectory_x
     cell_trackdata_df['y'] = trajectory_y
+    cell_trackdata_df['velocity'] = velocity
     cell_trackdata_df['frames'] = frame_list
     cell_trackdata_df['displacement'] = displacement
     cell_trackdata_df['duration'] = path_duration
