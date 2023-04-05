@@ -411,3 +411,87 @@ def shift_image_stack(image_stack_name, shift_coordinates):
     
     return
 
+def calculate_micropattern_velocity(cell_trackdata_df, pattern_mask, filename):
+    # lists to hold new data
+    fn_on_velocity, fn_off_velocity = [],[]
+    pattern_pts, pattern_crossing = [], []
+
+    # read in micropattern if given a string
+    if isinstance(pattern_mask, str):
+        pattern_mask = io.imread(pattern_mask).astype('bool')
+
+
+    for index, row in cell_trackdata_df.iterrows():
+        # get track data
+        x = row['x']
+        y = row['y']
+        v = row['velocity']
+        # remove first point with velocity 0
+        x = x[1:]
+        y = y[1:]
+        v = v[1:]
+
+        # check which points are in the pattern
+        in_mask = []
+        for (xpt,ypt) in zip(x,y):
+            if pattern_mask[int(xpt),int(ypt)]:
+                in_mask.append(True)
+            else:
+                in_mask.append(False)
+
+        # calculate the average velocity for each condition
+        if np.sum(in_mask) > 0:
+            fn_on_velocity.append(np.mean(v[in_mask]))
+            if np.sum(in_mask) == len(in_mask):
+                fn_off_velocity.append(np.nan)
+            else:
+                fn_off_velocity.append(np.mean(v[np.invert(in_mask)]))
+        else:
+            fn_on_velocity.append(np.nan)
+            fn_off_velocity.append(np.mean(v[np.invert(in_mask)]))
+ 
+        if np.isnan(fn_on_velocity[-1]) or np.isnan(fn_off_velocity[-1]):
+            pattern_crossing.append(False)
+        else:
+            pattern_crossing.append(True)
+        
+        
+        # save the list of on/off points
+        pattern_pts.append(in_mask)
+
+    # add things to the dataframe
+    cell_trackdata_df['pattern_crossing'] = pattern_crossing
+    cell_trackdata_df['fn_on_velocity'] = fn_on_velocity
+    cell_trackdata_df['fn_off_velocity'] = fn_off_velocity
+    cell_trackdata_df['pattern_pts'] = pattern_pts
+    
+    # save the dataframe
+    cell_trackdata_df.to_hdf(filename[:-4] + '_pattern_trackdata.h5', key='tracks', mode='w')
+    
+    return cell_trackdata_df
+
+def plot_micropattern_comparison(cell_trackdata_df, filename='.tif', ylimits = (None,None), save_plot=True):
+    # set the limits of the plot if a single number is passed
+    if (type(ylimits) is int) | (type(ylimits) is float):
+        ylimits = (-1*ylimits, ylimits)
+
+    # reduce the dataframe to only those cells that cross the micropattern
+    cell_trackdata_crossing_df = cell_trackdata_df[cell_trackdata_df['pattern_crossing'] == True]
+
+    # make the figure
+    crossing_fig, crossing_ax = plt.subplots()
+    # plot the boxplot
+    crossing_ax.boxplot([cell_trackdata_crossing_df['fn_on_velocity'],cell_trackdata_crossing_df['fn_off_velocity']], labels=['On','Off'])
+    # plot the paired data
+    for index, row in cell_trackdata_crossing_df.iterrows():
+        crossing_ax.plot([1,2],[row['fn_on_velocity'], row['fn_off_velocity']], '.k-', alpha=0.2)
+    crossing_ax.set_ylim(ylimits)
+    crossing_ax.set_ylabel('Average Velocity')
+    crossing_fig.show()
+
+    # save the image
+    if save_plot:
+        crossing_fig.savefig(filename[:-4] + '_micropattern_comparison.eps', format = 'eps', bbox_inches='tight')
+        crossing_fig.savefig(filename[:-4] + '_micropattern_comparison.png', format = 'png', dpi=300, bbox_inches='tight')
+    
+    return
