@@ -467,6 +467,11 @@ def calculate_micropattern_velocity(cell_trackdata_df, pattern_mask, filename):
     
     # save the dataframe
     cell_trackdata_df.to_hdf(filename[:-4] + '_pattern_trackdata.h5', key='tracks', mode='w')
+
+    # make a dataframe for saving as csv with data
+    cell_trackdata_df_csv = cell_trackdata_df.copy()
+    cell_trackdata_df_csv = cell_trackdata_df_csv.drop(['x','y','velocity','frames','pattern_pts'], axis=1)
+    cell_trackdata_df_csv.to_csv(filename[:-4] + '_pattern_trackdata.csv')
     
     return cell_trackdata_df
 
