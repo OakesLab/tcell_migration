@@ -500,3 +500,41 @@ def plot_micropattern_comparison(cell_trackdata_df, filename='.tif', ylimits = (
         crossing_fig.savefig(filename[:-4] + '_micropattern_comparison.png', format = 'png', dpi=300, bbox_inches='tight')
     
     return
+
+def plot_instanteous_velocity_overlay(imstack, cell_trackdata_df, filename = filename, min_inten = None, max_inten = None, save_plot = True):
+    color_hue='average_velocity'
+    
+    # set the min and max intensities if they're note defined
+    if max_inten is None:
+        max_inten = np.max(imstack) * 0.2
+    if min_inten is None:
+        min_inten = np.min(imstack)
+    
+    # make colormap
+    cmap = plt.cm.rainbow
+    max_colormap = 1.25*np.max(cell_trackdata_df[color_hue])
+    norm = colors.Normalize(vmin=0, vmax=max_colormap)
+    
+    # plot the last frame of the image stack
+    fig, ax = plt.subplots()
+    ax.imshow(imstack[-1], vmin = min_inten, vmax = max_inten, cmap='Greys')
+    # loop through tracks
+    for index, row in cell_trackdata_df.iterrows():
+        # keep only those points that are in the previous frames
+        x = row['x']
+        y = row['y']
+        v = row['velocity']
+        for (xpt, ypt, vpt) in zip(x,y,v):
+            ax.scatter(xpt, ypt, s=2, facecolors='none', edgecolors=cmap(norm(vpt)))
+    # turn off the axes
+    ax.axis('off')
+    # add a colorbar
+    fig.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax = ax, label=color_hue)
+    fig.show()
+    # save figure
+    # save the image
+    if save_plot:
+        fig.savefig(filename[:-4] + '_instantaneous_velocity_overlay.eps', format = 'eps', bbox_inches='tight')
+        fig.savefig(filename[:-4] + '_instantaneous_velocity_overlay.png', format = 'png', dpi=300, bbox_inches='tight')
+    
+    return
