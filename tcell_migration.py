@@ -11,6 +11,7 @@ import matplotlib.patches as mpatches
 import subprocess                                  # for executing commands from the terminal
 from skimage.registration import phase_cross_correlation       # image registration
 from scipy.fftpack import fft2, ifft2, ifftshift               # FFT for image registration
+from scipy.ndimage.morphology import distance_transform_edt   # for distance mask transform
 
 # from skimage.feature import peak_local_max
 # import warnings
@@ -411,7 +412,7 @@ def shift_image_stack(image_stack_name, shift_coordinates):
     
     return
 
-def calculate_micropattern_velocity(cell_trackdata_df, pattern_mask, filename):
+def calculate_micropattern_velocity(cell_trackdata_df, pattern_mask, filename = '.tif'):
     # lists to hold new data
     fn_on_velocity, fn_off_velocity = [],[]
     pattern_pts, pattern_crossing = [], []
@@ -419,6 +420,10 @@ def calculate_micropattern_velocity(cell_trackdata_df, pattern_mask, filename):
     # read in micropattern if given a string
     if isinstance(pattern_mask, str):
         pattern_mask = io.imread(pattern_mask).astype('bool')
+
+    # make the distance mask of the pattern
+    distance_mask = distance_transform_edt(np.invert(pattern_mask))
+
 
 
     for index, row in cell_trackdata_df.iterrows():
@@ -434,7 +439,10 @@ def calculate_micropattern_velocity(cell_trackdata_df, pattern_mask, filename):
         # check which points are in the pattern
         in_mask = []
         for (xpt,ypt) in zip(x,y):
-            if pattern_mask[int(xpt),int(ypt)]:
+            # have to switch x and y because of the difference for arrays versus plotting
+            # if pattern_mask[int(ypt),int(xpt)]:
+            # use the distance mask because our threshold isn't perfect so we include points that are within 5 pixels
+            if distance_mask[int(ypt),int(xpt)] < 5:
                 in_mask.append(True)
             else:
                 in_mask.append(False)
@@ -501,7 +509,7 @@ def plot_micropattern_comparison(cell_trackdata_df, filename='.tif', ylimits = (
     
     return
 
-def plot_instanteous_velocity_overlay(imstack, cell_trackdata_df, filename = filename, min_inten = None, max_inten = None, save_plot = True):
+def plot_instanteous_velocity_overlay(imstack, cell_trackdata_df, filename = '.tif', min_inten = None, max_inten = None, save_plot = True):
     color_hue='average_velocity'
     
     # set the min and max intensities if they're note defined
