@@ -4,7 +4,7 @@ This code was developed for the analysis of data in:
 
 <h3>T cells Use Focal Adhesions to Pull Themselves Through Confined Environments</h3><br>
 Caillier&nbsp;A, Oleksyn&nbsp;D, Fowell&nbsp;DJ, Miller&nbsp;J, Oakes&nbsp;PW<sup>&#9993;</sup><br>
-<a class="unadorned" target="_blank" href="https://doi.org/10.1101/2023.10.16.562587">DOI</a>  | <a class="unadorned" target="_blank" href="https://www.biorxiv.org/content/10.1101/2023.10.16.562587v1">bioR&chi;iv</a> | <a class="unadorned" target="_blank" href="https://x.com/pwoakes/status/1715169434061717897?s=20"><img src="images/Twitter_Social_Icon_Circle_Color.png" class="social"> Twitter thread</a> | <a class="unadorned" target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37904911/">PMID: 37904911</a><br>
+<a class="unadorned" target="_blank" href="https://doi.org/10.1101/2023.10.16.562587">DOI</a>  | <a class="unadorned" target="_blank" href="https://www.biorxiv.org/content/10.1101/2023.10.16.562587v1">bioR&chi;iv</a> | <a class="unadorned" target="_blank" href="https://x.com/pwoakes/status/1715169434061717897?s=20">Twitter thread</a> | <a class="unadorned" target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/37904911/">PMID: 37904911</a><br>
 
 All code is written in python and used the following packages (version tested on included in parantheses):
 - python (3.9.18)
