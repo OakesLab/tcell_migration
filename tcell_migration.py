@@ -138,8 +138,14 @@ def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue =
     return
 
 # need following variables as part of the function: filename, imstack
-def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten = None, im_max_inten = None, color_hue = None, max_colormap = None):
+def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten = None, im_max_inten = None, color_hue = None, max_colormap = None, savename = None):
     
+    # make the filename for saving
+    if savename is None:
+        savename = filename[:-4] + 'overlays.tif'
+    else:
+        savename = filename[:-4] + '_' + savename + '_overlays.tif'
+
     # make a colormap of the right length
     if color_hue:
         cmap = plt.cm.rainbow
@@ -199,13 +205,21 @@ def make_movie_with_overlays(filename, imstack, cell_trackdata_df, im_min_inten 
         plot_stack[i] = im[:N_rows,:N_cols,0:3]
 
     # save the movie as a .tif stack
-    io.imsave(filename[:-4] + '_movie.tif', plot_stack.astype('uint8'))  
-    #remove the individual images and the folder
-    shutil.rmtree(movie_folder)
+    # io.imsave(filename[:-4] + '_movie.tif', plot_stack.astype('uint8'))
+    io.imsave(savename, plot_stack.astype('uint8'))   
 
-    save_timelapse_as_movie(plot_stack, filename[:-4] + 'overlays.tif')
+    # save_timelapse_as_movie(plot_stack, filename[:-4] + 'overlays.tif')
+    save_timelapse_as_movie(plot_stack, savename)
+
+    #remove the individual images and the folder
+    shutil.rmtree(movie_folder, onerror=ignore_extended_attributes)
     
     return
+
+def ignore_extended_attributes(func, filename, exc_info):
+    is_meta_file = os.path.basename(filename).startswith("._")
+    if not (func is os.unlink and is_meta_file):
+        raise
 
 def plot_roseplot(cell_trackdata_df, filename='.tif', um_per_pixel = 1, color_hue = None, max_colormap = None, xlimits = (None,None), ylimits = (None,None), save_plot=True):
     
@@ -280,7 +294,7 @@ def save_timelapse_as_movie(imstack, filename='.tif', framerate = 15, warning_fl
         subprocess.call(movie_str, shell=True, stderr = subprocess.STDOUT, stdout = subprocess.DEVNULL)
     
     # delete the temp folder and files
-    shutil.rmtree('temp_folder')
+    shutil.rmtree('temp_folder', onerror=ignore_extended_attributes)
     
     return
 
@@ -546,3 +560,114 @@ def plot_instanteous_velocity_overlay(imstack, cell_trackdata_df, filename = '.t
         fig.savefig(filename[:-4] + '_instantaneous_velocity_overlay.png', format = 'png', dpi=300, bbox_inches='tight')
     
     return
+
+def update_overlap_df(track_overlap_df, trackA_id, trackA_x, trackA_y, trackA_frames, trackA_velocity,  trackB_id, trackB_x, trackB_y, trackB_frames, trackB_velocity, umperpixel=1.1):
+    #empty lists to hold new data
+    leader_id, follower_id = [],[]
+    trackA_first_frame, trackB_first_frame = [],[]
+    trackA_overlap_velocity, trackB_overlap_velocity = [],[]
+    leader_velocity, follower_velocity = [],[]
+    trackA_pathlength, trackB_pathlength = [],[]
+    # calculate the path lengths of each track
+    pathlengthA = np.sqrt((np.diff(trackA_x)**2 + np.diff(trackA_y)**2)) * umperpixel
+    pathlengthA = np.insert(pathlengthA, 0, 0)
+    pathlengthB = np.sqrt((np.diff(trackB_x)**2 + np.diff(trackB_y)**2)) * umperpixel
+    pathlengthB = np.insert(pathlengthB, 0, 0)
+    # loop through each labeled row
+    for id,row in track_overlap_df.iterrows():
+        # find the first frame of each track
+        trackA_first_frame.append(trackA_frames[row['tA_start'].astype('int')])
+        trackB_first_frame.append(trackB_frames[row['tB_start'].astype('int')])
+        # find the velocity in the overlap region - the +1 comes from making sure to include the last point in the overlap region
+        trackA_overlap_velocity.append(np.mean(trackA_velocity[row['tA_start'].astype('int'):row['tA_end'].astype('int')+1]))
+        trackB_overlap_velocity.append(np.mean(trackB_velocity[row['tB_start'].astype('int'):row['tB_end'].astype('int')+1]))
+        trackA_pathlength.append(np.sum(pathlengthA[row['tA_start'].astype('int'):row['tA_end'].astype('int')+1]))
+        trackB_pathlength.append(np.sum(pathlengthB[row['tB_start'].astype('int'):row['tB_end'].astype('int')+1]))
+        if trackA_first_frame[-1] < trackB_first_frame[-1]:
+            leader_velocity.append(trackA_overlap_velocity[-1])
+            follower_velocity.append(trackB_overlap_velocity[-1])
+            leader_id.append(trackA_id)
+            follower_id.append(trackB_id)
+        else:
+            leader_velocity.append(trackB_overlap_velocity[-1])
+            follower_velocity.append(trackA_overlap_velocity[-1])
+            leader_id.append(trackB_id)
+            follower_id.append(trackA_id)
+    track_overlap_df['tA_first_frame'] = trackA_first_frame
+    track_overlap_df['tB_first_frame'] = trackB_first_frame
+    track_overlap_df['tA_total'] = track_overlap_df['tA_end'] - track_overlap_df['tA_start']
+    track_overlap_df['tB_total'] = track_overlap_df['tB_end'] - track_overlap_df['tB_start']
+    track_overlap_df['tA_length'] = trackA_pathlength
+    track_overlap_df['tB_length'] = trackB_pathlength
+    track_overlap_df['tA_overlap_velocity'] = trackA_overlap_velocity
+    track_overlap_df['tB_overlap_velocity'] = trackB_overlap_velocity
+    track_overlap_df['leader_velocity'] = leader_velocity
+    track_overlap_df['follower_velocity'] = follower_velocity
+    track_overlap_df['leader_id'] = leader_id
+    track_overlap_df['follower_id'] = follower_id
+    track_overlap_df['velocity_difference'] = track_overlap_df['follower_velocity'] - track_overlap_df['leader_velocity']
+    return track_overlap_df
+
+def get_track_details(track_data_df, track_id):
+    track_x = track_data_df.x[track_id]
+    track_y = track_data_df.y[track_id]
+    track_frames = track_data_df.frames[track_id]
+    track_velocity = track_data_df.velocity[track_id]
+    return track_x, track_y, track_frames, track_velocity
+
+def make_distance_map(track0_x, track0_y, track1_x, track1_y, gap = 2):
+    # make the track x y into a single array
+    track0 = np.array([track0_x,track0_y]).T
+    track1 = np.array([track1_x,track1_y]).T
+    # calculate the euclidean distance between each point
+    dist_map = cdist(track0,track1, metric='euclidean')
+    # make the mask from that distance map
+    track_distance_mask = dist_map < gap
+    return track_distance_mask
+
+def correct_track_distance_map(track_distance_mask, gap = 2, min_area = 3):
+    # label the mask
+    labeled_track_distance_mask = label(track_distance_mask)
+    # get the label values
+    unique_labels = np.unique(labeled_track_distance_mask)[1:]   # dropping zero since that's background
+    # empty mask to hold output
+    connecting_mask = np.zeros(track_distance_mask.shape)
+    # loop through each label
+    for lab in unique_labels:
+        # make the mask for that label alone
+        lab_mask = labeled_track_distance_mask == lab
+        # get distance transform for that mask
+        lab_distance = distance_transform_edt(np.invert(lab_mask))
+        # only keep the pixels less than the gap
+        lab_distance = lab_distance < gap
+        # add only those pixels to the connecting mask
+        connecting_mask += lab_distance
+    # keep only those points that are connectin multiple labels
+    connecting_mask = connecting_mask > 1
+    # add those connecting pixels back to the track_distance_map
+    track_distance_mask += connecting_mask
+    # label the new track_distance_map
+    track_mask_label = label(track_distance_mask)
+    # get region props
+    track_overlap_table = regionprops_table(track_mask_label, properties=['area','bbox','label'])
+    # turn it into a dataframe
+    track_overlap_df = pd.DataFrame(track_overlap_table)
+    # get rid of areas smaller than the minimum
+    track_overlap_df = track_overlap_df[track_overlap_df.area >= min_area]
+    track_overlap_df.rename(columns={"bbox-0": "tA_start", "bbox-1": "tB_start", "bbox-2": "tA_end","bbox-3": "tB_end"}, inplace = True)
+    return track_distance_mask, track_overlap_df
+
+def get_condition(filename):
+    filename = filename.lower()
+    condition = 'unknown'
+    if 'fibronectin' in filename:
+        condition = 'fibronectin'
+    if 'icam' in filename:
+        condition = 'ICAM-1'
+    if 'uncoated' in filename:
+        condition = 'uncoated'
+    if 'dmso' in filename:
+        condition = 'dmso'
+    if 'mmp' in filename:
+        condition = 'mmp'
+    return condition
