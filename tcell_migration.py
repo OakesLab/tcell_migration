@@ -12,6 +12,9 @@ import subprocess                                  # for executing commands from
 from skimage.registration import phase_cross_correlation       # image registration
 from scipy.fftpack import fft2, ifft2, ifftshift               # FFT for image registration
 from scipy.ndimage.morphology import distance_transform_edt   # for distance mask transform
+from scipy.spatial import distance_matrix
+from scipy.spatial.distance import cdist
+from skimage.measure import label, regionprops_table  # For labeling regions in thresholded images
 
 # from skimage.feature import peak_local_max
 # import warnings
