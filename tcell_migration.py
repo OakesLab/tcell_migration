@@ -108,7 +108,7 @@ def calculate_track_parameters(cell_tracks_filtered, filename='.tif', um_per_pix
 
     return cell_trackdata_df
 
-def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue = None, max_colormap = None, save_plot = True):
+def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue = None, max_colormap = None, im_min_inten = None, im_max_inten = None, save_plot = True):
     # get the max projection of the image stack
     stack_sum = np.max(imstack, axis=0)
     # make a colormap of the right length
@@ -117,11 +117,16 @@ def plot_track_overlays(imstack, cell_trackdata_df, filename='.tif', color_hue =
         if max_colormap is None:
             max_colormap = np.max(cell_trackdata_df[color_hue])
         norm = colors.Normalize(vmin=0, vmax=max_colormap)
+
+    if not im_min_inten:
+        im_min_inten = np.min(stack_sum)
+    if not im_max_inten:
+        0.5 * (np.max(stack_sum) - np.min(stack_sum)) + np.min(stack_sum)
     
     # make the figure
     fig, ax = plt.subplots()
     # plot the summed image so overlays are easy to see
-    ax.imshow(stack_sum, cmap = 'Greys_r', vmin = np.min(stack_sum), vmax = .2*np.max(stack_sum))
+    ax.imshow(stack_sum, cmap = 'Greys_r', vmin = im_min_inten, vmax = im_max_inten)
     for index, row in cell_trackdata_df.iterrows():
         if color_hue:
             ax.plot(row['x'], row['y'], color = cmap(norm(row[color_hue])))
